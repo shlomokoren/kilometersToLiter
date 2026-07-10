@@ -1,24 +1,32 @@
 :root {
   color-scheme: light dark;
-  --bg: #f4f5f7;
+  --bg: #eef2fb;
   --card-bg: #ffffff;
   --text: #1c1e21;
   --muted: #6b7280;
   --border: #e2e4e9;
   --accent: #2563eb;
+  --accent-2: #0d9488;
+  --accent-3: #d97706;
   --accent-contrast: #ffffff;
   --error: #dc2626;
+  --header-grad: linear-gradient(135deg, #2563eb 0%, #0d9488 100%);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
-    --card-bg: #1e2126;
+    --bg: #12141a;
+    --card-bg: #1c1f26;
     --text: #f1f2f4;
     --muted: #9aa1ac;
     --border: #2c2f36;
-    --accent: #3b82f6;
+    --accent: #5b8def;
+    --accent-2: #2dd4bf;
+    --accent-3: #fbbf24;
     --accent-contrast: #0b0d10;
+    --header-grad: linear-gradient(135deg, #1e3a8a 0%, #0f766e 100%);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -34,26 +42,35 @@ body {
 .page {
   max-width: 860px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 0 1.25rem 4rem;
 }
 
-header { margin-bottom: 1.5rem; }
+header {
+  margin: 0 -1.25rem 1.5rem;
+  padding: 2rem 1.25rem 1.75rem;
+  background: var(--header-grad);
+  color: #fff;
+  border-radius: 0 0 20px 20px;
+  box-shadow: var(--shadow);
+}
+
 h1 { margin: 0; font-size: 1.9rem; }
-.subtitle { margin: 0.25rem 0 0; color: var(--muted); }
+h1::before { content: "⛽ "; }
+.subtitle { margin: 0.25rem 0 0; color: rgba(255, 255, 255, 0.85); }
 
 .user-bar {
-  margin-top: 0.75rem;
+  margin-top: 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   font-size: 0.85rem;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .link-btn {
   background: none;
   border: none;
-  color: var(--accent);
+  color: #fff;
   padding: 0;
   font-size: 0.85rem;
   text-decoration: underline;
@@ -75,10 +92,15 @@ h1 { margin: 0; font-size: 1.9rem; }
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.25rem;
+  box-shadow: var(--shadow);
 }
+
+.card:nth-of-type(2) { border-top-color: var(--accent-2); }
+.card:nth-of-type(3) { border-top-color: var(--accent-3); }
 
 .card h2 { margin-top: 0; font-size: 1.1rem; }
 
@@ -107,17 +129,25 @@ input {
   font-size: 1rem;
 }
 
-button {
-  background: var(--accent);
-  color: var(--accent-contrast);
-  border: none;
-  padding: 0.55rem 1.1rem;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  cursor: pointer;
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
-button:hover { opacity: 0.9; }
+button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+button:hover { filter: brightness(1.08); }
 
 .error {
   color: var(--error);
@@ -135,8 +165,20 @@ button:hover { opacity: 0.9; }
 
 .stat {
   border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--accent) 6%, var(--card-bg));
+}
+
+.stat:nth-child(2) {
+  border-left-color: var(--accent-3);
+  background: color-mix(in srgb, var(--accent-3) 6%, var(--card-bg));
+}
+
+.stat:nth-child(3) {
+  border-left-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 6%, var(--card-bg));
 }
 
 .stat .label {
@@ -150,6 +192,7 @@ button:hover { opacity: 0.9; }
   font-size: 1.15rem;
   font-weight: 600;
   margin-top: 0.15rem;
+  color: var(--text);
 }
 
 .hidden { display: none; }
@@ -163,17 +206,22 @@ table {
 
 th, td {
   text-align: right;
-  padding: 0.5rem 0.6rem;
+  padding: 0.55rem 0.6rem;
   border-bottom: 1px solid var(--border);
 }
 
 th:first-child, td:first-child { text-align: left; }
 
 thead th {
-  color: var(--muted);
-  font-weight: 500;
+  color: var(--accent);
+  font-weight: 600;
   font-size: 0.78rem;
   text-transform: uppercase;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
 @media (max-width: 600px) {
