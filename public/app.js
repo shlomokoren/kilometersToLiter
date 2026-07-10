@@ -4,12 +4,11 @@ const lastResult = document.getElementById('last-result');
 const averageEl = document.getElementById('average');
 const tbody = document.querySelector('#entries-table tbody');
 const noEntriesEl = document.getElementById('no-entries');
-const syncStatusEl = document.getElementById('sync-status');
-
-function setSyncStatus(state, message) {
-  syncStatusEl.className = `sync-status ${state}`;
-  syncStatusEl.textContent = message;
-}
+const userBar = document.getElementById('user-bar');
+const userEmailEl = document.getElementById('user-email');
+const logoutBtn = document.getElementById('logout-btn');
+const loginView = document.getElementById('login-view');
+const appView = document.getElementById('app-view');
 
 function statBlock(label, value) {
   return `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`;
@@ -53,15 +52,43 @@ function renderEntries(entries) {
 
 async function loadEntries() {
   const res = await fetch('/api/entries');
+  if (res.status === 401) {
+    showLoggedOut();
+    return;
+  }
   const data = await res.json();
   renderEntries(data.entries);
   renderAverage(data.average);
-  if (!data.driveConfigured) {
-    setSyncStatus('off', '☁ Drive sync not set up — see SETUP.md');
-  } else {
-    setSyncStatus('ok', '☁ Drive sync enabled');
-  }
 }
+
+function showLoggedOut() {
+  loginView.classList.remove('hidden');
+  appView.classList.add('hidden');
+  userBar.classList.add('hidden');
+}
+
+function showLoggedIn(email) {
+  loginView.classList.add('hidden');
+  appView.classList.remove('hidden');
+  userBar.classList.remove('hidden');
+  userEmailEl.textContent = email;
+}
+
+async function init() {
+  const res = await fetch('/api/session');
+  const data = await res.json();
+  if (!data.authenticated) {
+    showLoggedOut();
+    return;
+  }
+  showLoggedIn(data.email);
+  loadEntries();
+}
+
+logoutBtn.addEventListener('click', async () => {
+  await fetch('/auth/logout', { method: 'POST' });
+  window.location.reload();
+});
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -78,6 +105,12 @@ form.addEventListener('submit', async (event) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+
+  if (res.status === 401) {
+    showLoggedOut();
+    return;
+  }
+
   const data = await res.json();
 
   if (!res.ok) {
@@ -92,12 +125,6 @@ form.addEventListener('submit', async (event) => {
   renderEntries(data.entries);
   renderAverage(data.average);
   form.reset();
-
-  if (data.synced) {
-    setSyncStatus('ok', '☁ Synced to Drive');
-  } else if (data.syncError) {
-    setSyncStatus('warn', `⚠ Saved locally, Drive sync failed: ${data.syncError}`);
-  }
 });
 
-loadEntries();
+init();

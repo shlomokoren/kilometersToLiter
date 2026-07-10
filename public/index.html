@@ -11,59 +11,70 @@
   <header>
     <h1>KilometersToLiter</h1>
     <p class="subtitle">Fuel efficiency tracker &amp; converter</p>
-    <p id="sync-status" class="sync-status"></p>
+    <div id="user-bar" class="user-bar hidden">
+      <span id="user-email"></span>
+      <button id="logout-btn" type="button" class="link-btn">Log out</button>
+    </div>
   </header>
 
-  <section class="card">
-    <h2>Add entry</h2>
-    <form id="entry-form">
-      <div class="field-row">
-        <label>
-          Start KM
-          <input type="number" id="startKm" step="any" required>
-        </label>
-        <label>
-          End KM
-          <input type="number" id="endKm" step="any" required>
-        </label>
-        <label>
-          Total fuel (L)
-          <input type="number" id="liters" step="any" required>
-        </label>
+  <section id="login-view" class="card hidden">
+    <h2>Sign in</h2>
+    <p class="empty">Sign in with Google to load and save your own fuel log, stored privately in your Drive.</p>
+    <a id="login-link" class="button-link" href="/auth/google">Sign in with Google</a>
+  </section>
+
+  <div id="app-view" class="hidden">
+    <section class="card">
+      <h2>Add entry</h2>
+      <form id="entry-form">
+        <div class="field-row">
+          <label>
+            Start KM
+            <input type="number" id="startKm" step="any" required>
+          </label>
+          <label>
+            End KM
+            <input type="number" id="endKm" step="any" required>
+          </label>
+          <label>
+            Total fuel (L)
+            <input type="number" id="liters" step="any" required>
+          </label>
+        </div>
+        <button type="submit">Calculate</button>
+        <p id="form-error" class="error"></p>
+      </form>
+      <div id="last-result" class="result hidden">
+        <h3>This entry</h3>
+        <div class="stat-grid"></div>
       </div>
-      <button type="submit">Calculate</button>
-      <p id="form-error" class="error"></p>
-    </form>
-    <div id="last-result" class="result hidden">
-      <h3>This entry</h3>
-      <div class="stat-grid"></div>
-    </div>
-  </section>
+    </section>
 
-  <section class="card">
-    <h2>Average across all entries</h2>
-    <div id="average" class="stat-grid empty">No entries yet.</div>
-  </section>
+    <section class="card">
+      <h2>Average across all entries</h2>
+      <div id="average" class="stat-grid empty">No entries yet.</div>
+    </section>
 
-  <section class="card">
-    <h2>Entries</h2>
-    <table id="entries-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Start KM</th>
-          <th>End KM</th>
-          <th>Distance</th>
-          <th>Fuel (L)</th>
-          <th>km/L</th>
-          <th>L/100km</th>
-          <th>MPG (US)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p id="no-entries" class="empty hidden">No entries logged yet — add one above.</p>
-  </section>
+    <section class="card">
+      <h2>Entries</h2>
+      <table id="entries-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Start KM</th>
+            <th>End KM</th>
+            <th>Distance</th>
+            <th>Fuel (L)</th>
+            <th>km/L</th>
+            <th>L/100km</th>
+            <th>MPG (US)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="no-entries" class="empty hidden">No entries logged yet — add one above.</p>
+    </section>
+  </div>
 </div>
 <script src="app.js"></script>
 </body>

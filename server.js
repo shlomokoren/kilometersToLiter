@@ -1,26 +1,28 @@
+require('dotenv').config({ quiet: true });
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
-const drive = require('./lib/drive');
+const crypto = require('crypto');
+const cookieSession = require('cookie-session');
+const driveLib = require('./lib/drive');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'data', 'db.json');
-
 const MPG_US_PER_KM_PER_L = 2.3521;
 
+app.set('trust proxy', 1);
+
 app.use(express.json());
+app.use(
+  cookieSession({
+    name: 'session',
+    keys: [process.env.SESSION_SECRET || 'dev-secret-change-me'],
+    maxAge: 180 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+);
 app.use(express.static(path.join(__dirname, 'public')));
-
-function readEntries() {
-  if (!fs.existsSync(DB_PATH)) return [];
-  const raw = fs.readFileSync(DB_PATH, 'utf8');
-  return raw.trim() ? JSON.parse(raw) : [];
-}
-
-function writeEntries(entries) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(entries, null, 2));
-}
 
 function conversions(kmPerL) {
   return {
@@ -41,12 +43,79 @@ function computeAverage(entries) {
   return conversions(totalDistance / totalLiters);
 }
 
-app.get('/api/entries', (req, res) => {
-  const entries = readEntries();
-  res.json({ entries, average: computeAverage(entries), driveConfigured: drive.isConfigured() });
+function requireAuth(req, res, next) {
+  if (!req.session || !req.session.tokens) {
+    return res.status(401).json({ error: 'Not signed in.' });
+  }
+  next();
+}
+
+function driveClientForRequest(req) {
+  const { drive } = driveLib.driveFor(req.session.tokens, (tokens) => {
+    req.session.tokens = tokens;
+  });
+  return drive;
+}
+
+app.get('/auth/google', (req, res) => {
+  if (!driveLib.isEnvConfigured()) {
+    return res.status(500).send('Google OAuth is not configured on the server (missing env vars).');
+  }
+  const oauth2Client = driveLib.createOAuthClient();
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  res.redirect(driveLib.getAuthUrl(oauth2Client, state));
 });
 
-app.post('/api/entries', async (req, res) => {
+app.get('/auth/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.status(400).send(`Google sign-in failed: ${error}`);
+  if (!state || state !== req.session.oauthState) {
+    return res.status(400).send('Invalid OAuth state. Please try signing in again.');
+  }
+  delete req.session.oauthState;
+
+  try {
+    const oauth2Client = driveLib.createOAuthClient();
+    const tokens = await driveLib.exchangeCode(oauth2Client, code);
+    oauth2Client.setCredentials(tokens);
+    const email = await driveLib.getEmail(oauth2Client);
+
+    req.session.tokens = tokens;
+    req.session.email = email;
+    delete req.session.driveFileId;
+
+    res.redirect('/');
+  } catch (err) {
+    console.error('OAuth callback failed:', err.message);
+    res.status(500).send('Sign-in failed. Please try again.');
+  }
+});
+
+app.post('/auth/logout', (req, res) => {
+  req.session = null;
+  res.status(204).end();
+});
+
+app.get('/api/session', (req, res) => {
+  const authenticated = Boolean(req.session && req.session.tokens);
+  res.json({ authenticated, email: authenticated ? req.session.email : null });
+});
+
+app.get('/api/entries', requireAuth, async (req, res) => {
+  try {
+    const drive = driveClientForRequest(req);
+    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
+    req.session.driveFileId = fileId;
+    const entries = await driveLib.downloadEntries(drive, fileId);
+    res.json({ entries, average: computeAverage(entries), email: req.session.email });
+  } catch (err) {
+    console.error('Failed to load entries from Drive:', err.message);
+    res.status(502).json({ error: 'Could not load entries from Google Drive.' });
+  }
+});
+
+app.post('/api/entries', requireAuth, async (req, res) => {
   const startKm = Number(req.body.startKm);
   const endKm = Number(req.body.endKm);
   const liters = Number(req.body.liters);
@@ -71,42 +140,27 @@ app.post('/api/entries', async (req, res) => {
     date: new Date().toISOString().slice(0, 10),
   };
 
-  const entries = readEntries();
-  entries.push(entry);
-  writeEntries(entries);
+  try {
+    const drive = driveClientForRequest(req);
+    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
+    req.session.driveFileId = fileId;
 
-  let synced = false;
-  let syncError = null;
-  if (drive.isConfigured()) {
-    try {
-      await drive.pushEntries(entries);
-      synced = true;
-    } catch (err) {
-      syncError = err.message;
-      console.error('Drive sync failed:', err.message);
-    }
+    const entries = await driveLib.downloadEntries(drive, fileId);
+    entries.push(entry);
+    await driveLib.uploadEntries(drive, fileId, entries);
+
+    res.status(201).json({ entries, average: computeAverage(entries) });
+  } catch (err) {
+    console.error('Failed to save entry to Drive:', err.message);
+    res.status(502).json({ error: 'Saved failed: could not reach Google Drive.' });
   }
-
-  res.status(201).json({ entries, average: computeAverage(entries), synced, syncError });
 });
 
-async function start() {
-  if (drive.isConfigured()) {
-    try {
-      console.log('Pulling latest entries from Google Drive...');
-      const remoteEntries = await drive.pullEntries();
-      writeEntries(remoteEntries);
-      console.log(`Synced ${remoteEntries.length} entries from Drive.`);
-    } catch (err) {
-      console.error('Could not pull from Drive, using local data instead:', err.message);
-    }
-  } else {
-    console.log('Google Drive is not configured yet — see SETUP.md. Running with local data only.');
+app.listen(PORT, () => {
+  console.log(`KilometersToLiter running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
+  if (!driveLib.isEnvConfigured()) {
+    console.warn(
+      'Google OAuth env vars are not fully set (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET). Sign-in will not work until they are.'
+    );
   }
-
-  app.listen(PORT, () => {
-    console.log(`KilometersToLiter running at http://localhost:${PORT}`);
-  });
-}
-
-start();
+});
