@@ -157,7 +157,7 @@ app.post('/api/entries', requireAuth, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`KilometersToLiter running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
+  console.log(`KilometersToLiter running at ${process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${PORT}`}`);
   if (!driveLib.isEnvConfigured()) {
     console.warn(
       'Google OAuth env vars are not fully set (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SESSION_SECRET). Sign-in will not work until they are.'

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kilometerstoliter
+    runtime: node
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
