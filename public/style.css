@@ -58,6 +58,22 @@ h1 { margin: 0; font-size: 1.9rem; }
 h1::before { content: "⛽ "; }
 .subtitle { margin: 0.25rem 0 0; color: rgba(255, 255, 255, 0.85); }
 
+.env-badge {
+  display: inline-block;
+  float: right;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.env-badge.test {
+  background: rgba(217, 119, 6, 0.25);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
 .user-bar {
   margin-top: 0.9rem;
   display: flex;

@@ -99,7 +99,8 @@ app.post('/auth/logout', (req, res) => {
 
 app.get('/api/session', (req, res) => {
   const authenticated = Boolean(req.session && req.session.tokens);
-  res.json({ authenticated, email: authenticated ? req.session.email : null });
+  const environment = process.env.NODE_ENV === 'production' ? 'production' : 'test';
+  res.json({ authenticated, email: authenticated ? req.session.email : null, environment });
 });
 
 app.get('/api/entries', requireAuth, async (req, res) => {

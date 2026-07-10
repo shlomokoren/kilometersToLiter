@@ -9,6 +9,18 @@ const userEmailEl = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
 const loginView = document.getElementById('login-view');
 const appView = document.getElementById('app-view');
+const envBadge = document.getElementById('env-badge');
+
+function renderEnvBadge(environment) {
+  envBadge.classList.remove('hidden');
+  if (environment === 'production') {
+    envBadge.textContent = '🚀 Production';
+    envBadge.className = 'env-badge production';
+  } else {
+    envBadge.textContent = '🧪 Test';
+    envBadge.className = 'env-badge test';
+  }
+}
 
 function statBlock(label, value) {
   return `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`;
@@ -78,6 +90,7 @@ function showLoggedIn(email) {
 async function init() {
   const res = await fetch('/api/session');
   const data = await res.json();
+  renderEnvBadge(data.environment);
   if (!data.authenticated) {
     showLoggedOut();
     return;
