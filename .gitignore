@@ -1,0 +1,5 @@
+node_modules/
+credentials.json
+token.json
+.claude/settings.local.json
+data/db.json
