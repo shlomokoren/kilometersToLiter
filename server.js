@@ -156,6 +156,31 @@ app.post('/api/entries', requireAuth, async (req, res) => {
   }
 });
 
+app.delete('/api/entries/:index', requireAuth, async (req, res) => {
+  const index = Number(req.params.index);
+  if (!Number.isInteger(index) || index < 0) {
+    return res.status(400).json({ error: 'Invalid entry index.' });
+  }
+
+  try {
+    const drive = driveClientForRequest(req);
+    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
+    req.session.driveFileId = fileId;
+
+    const entries = await driveLib.downloadEntries(drive, fileId);
+    if (index >= entries.length) {
+      return res.status(404).json({ error: 'Entry not found.' });
+    }
+    entries.splice(index, 1);
+    await driveLib.uploadEntries(drive, fileId, entries);
+
+    res.json({ entries, average: computeAverage(entries) });
+  } catch (err) {
+    console.error('Failed to delete entry from Drive:', err.message);
+    res.status(502).json({ error: 'Could not delete entry from Google Drive.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`KilometersToLiter running at ${process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL || `http://localhost:${PORT}`}`);
   if (!driveLib.isEnvConfigured()) {

@@ -34,7 +34,7 @@ function renderAverage(average) {
 function renderEntries(entries) {
   tbody.innerHTML = '';
   noEntriesEl.classList.toggle('hidden', entries.length > 0);
-  for (const e of entries) {
+  entries.forEach((e, index) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${e.date}</td>
@@ -45,9 +45,10 @@ function renderEntries(entries) {
       <td>${e.kmPerL}</td>
       <td>${e.lPer100km}</td>
       <td>${e.mpgUs}</td>
+      <td><button type="button" class="delete-btn" data-index="${index}" aria-label="Delete entry">✕</button></td>
     `;
     tbody.appendChild(tr);
-  }
+  });
 }
 
 async function loadEntries() {
@@ -88,6 +89,30 @@ async function init() {
 logoutBtn.addEventListener('click', async () => {
   await fetch('/auth/logout', { method: 'POST' });
   window.location.reload();
+});
+
+tbody.addEventListener('click', async (event) => {
+  const btn = event.target.closest('.delete-btn');
+  if (!btn) return;
+
+  if (!window.confirm('Delete this entry? This cannot be undone.')) return;
+
+  const index = btn.dataset.index;
+  const res = await fetch(`/api/entries/${index}`, { method: 'DELETE' });
+
+  if (res.status === 401) {
+    showLoggedOut();
+    return;
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    window.alert(data.error || 'Could not delete entry.');
+    return;
+  }
+
+  renderEntries(data.entries);
+  renderAverage(data.average);
 });
 
 form.addEventListener('submit', async (event) => {

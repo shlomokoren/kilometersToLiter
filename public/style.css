@@ -224,6 +224,25 @@ tbody tr:hover {
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
+.delete-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  box-shadow: none;
+  line-height: 1;
+}
+
+.delete-btn:hover {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
+  filter: none;
+}
+
 @media (max-width: 600px) {
   table { display: block; overflow-x: auto; }
 }
