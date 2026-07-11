@@ -57,6 +57,21 @@ function driveClientForRequest(req) {
   return drive;
 }
 
+function isAuthError(err) {
+  const status = err.response?.status || err.code;
+  return status === 401 || status === 400 || /invalid_grant|invalid_token|unauthorized/i.test(err.message || '');
+}
+
+function handleDriveError(req, res, err, fallbackMessage) {
+  if (isAuthError(err)) {
+    console.warn('Google session expired or revoked:', err.message);
+    req.session = null;
+    return res.status(401).json({ error: 'Your Google session expired. Please sign in again.' });
+  }
+  console.error(fallbackMessage, err.message);
+  res.status(502).json({ error: fallbackMessage });
+}
+
 app.get('/auth/google', (req, res) => {
   if (!driveLib.isEnvConfigured()) {
     return res.status(500).send('Google OAuth is not configured on the server (missing env vars).');
@@ -111,8 +126,7 @@ app.get('/api/entries', requireAuth, async (req, res) => {
     const entries = await driveLib.downloadEntries(drive, fileId);
     res.json({ entries, average: computeAverage(entries), email: req.session.email });
   } catch (err) {
-    console.error('Failed to load entries from Drive:', err.message);
-    res.status(502).json({ error: 'Could not load entries from Google Drive.' });
+    handleDriveError(req, res, err, 'Could not load entries from Google Drive.');
   }
 });
 
@@ -152,8 +166,7 @@ app.post('/api/entries', requireAuth, async (req, res) => {
 
     res.status(201).json({ entries, average: computeAverage(entries) });
   } catch (err) {
-    console.error('Failed to save entry to Drive:', err.message);
-    res.status(502).json({ error: 'Saved failed: could not reach Google Drive.' });
+    handleDriveError(req, res, err, 'Could not save entry to Google Drive.');
   }
 });
 
@@ -177,8 +190,7 @@ app.delete('/api/entries/:index', requireAuth, async (req, res) => {
 
     res.json({ entries, average: computeAverage(entries) });
   } catch (err) {
-    console.error('Failed to delete entry from Drive:', err.message);
-    res.status(502).json({ error: 'Could not delete entry from Google Drive.' });
+    handleDriveError(req, res, err, 'Could not delete entry from Google Drive.');
   }
 });
 

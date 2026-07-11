@@ -9,6 +9,7 @@ const userEmailEl = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
 const loginView = document.getElementById('login-view');
 const appView = document.getElementById('app-view');
+const loginMessage = document.getElementById('login-message');
 const envBadge = document.getElementById('env-badge');
 
 function renderEnvBadge(environment) {
@@ -66,7 +67,8 @@ function renderEntries(entries) {
 async function loadEntries() {
   const res = await fetch('/api/entries');
   if (res.status === 401) {
-    showLoggedOut();
+    const data = await res.json().catch(() => ({}));
+    showLoggedOut(data.error);
     return;
   }
   const data = await res.json();
@@ -74,10 +76,12 @@ async function loadEntries() {
   renderAverage(data.average);
 }
 
-function showLoggedOut() {
+function showLoggedOut(message) {
   loginView.classList.remove('hidden');
   appView.classList.add('hidden');
   userBar.classList.add('hidden');
+  loginMessage.textContent = message || '';
+  loginMessage.classList.toggle('hidden', !message);
 }
 
 function showLoggedIn(email) {
@@ -114,7 +118,8 @@ tbody.addEventListener('click', async (event) => {
   const res = await fetch(`/api/entries/${index}`, { method: 'DELETE' });
 
   if (res.status === 401) {
-    showLoggedOut();
+    const data = await res.json().catch(() => ({}));
+    showLoggedOut(data.error);
     return;
   }
 
@@ -145,7 +150,8 @@ form.addEventListener('submit', async (event) => {
   });
 
   if (res.status === 401) {
-    showLoggedOut();
+    const data = await res.json().catch(() => ({}));
+    showLoggedOut(data.error);
     return;
   }
 
