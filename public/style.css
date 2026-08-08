@@ -262,3 +262,10 @@ tbody tr:hover {
 @media (max-width: 600px) {
   table { display: block; overflow-x: auto; }
 }
+
+.version-info {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 1rem;
+}

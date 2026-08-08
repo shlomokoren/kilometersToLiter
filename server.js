@@ -9,6 +9,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MPG_US_PER_KM_PER_L = 2.3521;
 
+function resolveCommit() {
+  if (process.env.RENDER_GIT_COMMIT) return process.env.RENDER_GIT_COMMIT;
+  try {
+    return require('child_process').execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+const COMMIT = resolveCommit();
+const DEPLOYED_AT = new Date().toISOString();
+
 app.set('trust proxy', 1);
 
 app.use(express.json());
@@ -110,6 +122,10 @@ app.get('/auth/google/callback', async (req, res) => {
 app.post('/auth/logout', (req, res) => {
   req.session = null;
   res.status(204).end();
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({ commit: COMMIT.slice(0, 7), deployedAt: DEPLOYED_AT });
 });
 
 app.get('/api/session', (req, res) => {

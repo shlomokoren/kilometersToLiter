@@ -11,6 +11,19 @@ const loginView = document.getElementById('login-view');
 const appView = document.getElementById('app-view');
 const loginMessage = document.getElementById('login-message');
 const envBadge = document.getElementById('env-badge');
+const versionInfo = document.getElementById('version-info');
+
+async function renderVersion() {
+  try {
+    const res = await fetch('/api/version');
+    const data = await res.json();
+    const deployed = new Date(data.deployedAt).toLocaleString();
+    versionInfo.textContent = `v${data.commit} · deployed ${deployed}`;
+    versionInfo.classList.remove('hidden');
+  } catch {
+    // version info is best-effort
+  }
+}
 
 function renderEnvBadge(environment) {
   envBadge.classList.remove('hidden');
@@ -99,6 +112,7 @@ function showLoggedIn(email) {
 }
 
 async function init() {
+  renderVersion();
   const res = await fetch('/api/session');
   const data = await res.json();
   renderEnvBadge(data.environment);
