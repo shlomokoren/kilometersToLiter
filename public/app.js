@@ -64,6 +64,12 @@ function renderEntries(entries) {
   });
 }
 
+function prefillStartKm(entries) {
+  const startKmInput = document.getElementById('startKm');
+  if (startKmInput.value || !entries || entries.length === 0) return;
+  startKmInput.value = entries[entries.length - 1].endKm;
+}
+
 async function loadEntries() {
   const res = await fetch('/api/entries');
   if (res.status === 401) {
@@ -74,6 +80,7 @@ async function loadEntries() {
   const data = await res.json();
   renderEntries(data.entries);
   renderAverage(data.average);
+  prefillStartKm(data.entries);
 }
 
 function showLoggedOut(message) {
