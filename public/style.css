@@ -211,7 +211,7 @@ button:hover { filter: brightness(1.08); }
   color: var(--text);
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 .empty { color: var(--muted); font-size: 0.9rem; }
 
 table {
