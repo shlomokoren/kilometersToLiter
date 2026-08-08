@@ -19,6 +19,7 @@
       <span id="user-email"></span>
       <button id="logout-btn" type="button" class="link-btn">Log out</button>
     </div>
+    <button id="about-btn" type="button" class="link-btn about-btn">ℹ️ About</button>
   </header>
 
   <section id="login-view" class="card hidden">
@@ -81,8 +82,16 @@
       <p id="no-entries" class="empty hidden">No entries logged yet — add one above.</p>
     </section>
   </div>
-  <p id="version-info" class="version-info hidden"></p>
 </div>
+
+<div id="about-modal" class="modal-overlay hidden">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <h2 id="about-title">ℹ️ About</h2>
+    <p id="about-version" class="empty">Loading…</p>
+    <button id="about-close-btn" type="button">Close</button>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

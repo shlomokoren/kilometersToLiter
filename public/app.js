@@ -11,19 +11,36 @@ const loginView = document.getElementById('login-view');
 const appView = document.getElementById('app-view');
 const loginMessage = document.getElementById('login-message');
 const envBadge = document.getElementById('env-badge');
-const versionInfo = document.getElementById('version-info');
+const aboutBtn = document.getElementById('about-btn');
+const aboutModal = document.getElementById('about-modal');
+const aboutVersion = document.getElementById('about-version');
+const aboutCloseBtn = document.getElementById('about-close-btn');
 
-async function renderVersion() {
+function closeAbout() {
+  aboutModal.classList.add('hidden');
+}
+
+async function openAbout() {
+  aboutModal.classList.remove('hidden');
+  aboutVersion.textContent = 'Loading…';
   try {
     const res = await fetch('/api/version');
     const data = await res.json();
     const deployed = new Date(data.deployedAt).toLocaleString();
-    versionInfo.textContent = `v${data.commit} · deployed ${deployed}`;
-    versionInfo.classList.remove('hidden');
+    aboutVersion.textContent = `Version: ${data.commit}\nDeployed: ${deployed}`;
   } catch {
-    // version info is best-effort
+    aboutVersion.textContent = 'Version info unavailable.';
   }
 }
+
+aboutBtn.addEventListener('click', openAbout);
+aboutCloseBtn.addEventListener('click', closeAbout);
+aboutModal.addEventListener('click', (event) => {
+  if (event.target === aboutModal) closeAbout();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !aboutModal.classList.contains('hidden')) closeAbout();
+});
 
 function renderEnvBadge(environment) {
   envBadge.classList.remove('hidden');
@@ -112,7 +129,6 @@ function showLoggedIn(email) {
 }
 
 async function init() {
-  renderVersion();
   const res = await fetch('/api/session');
   const data = await res.json();
   renderEnvBadge(data.environment);

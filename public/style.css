@@ -263,9 +263,36 @@ tbody tr:hover {
   table { display: block; overflow-x: auto; }
 }
 
-.version-info {
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.75rem;
+.about-btn {
+  display: block;
+  margin-top: 0.9rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  z-index: 10;
+}
+
+.modal-card {
+  background: var(--card-bg);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: var(--shadow);
+}
+
+.modal-card h2 { margin-top: 0; }
+#about-version { white-space: pre-line; }
+
+.modal-card button {
   margin-top: 1rem;
+  width: 100%;
 }
