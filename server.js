@@ -12,6 +12,7 @@ const MPG_US_PER_KM_PER_L = 2.3521;
 
 function resolveCommit() {
   if (process.env.RENDER_GIT_COMMIT) return process.env.RENDER_GIT_COMMIT;
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA;
   try {
     return require('child_process').execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
   } catch {
