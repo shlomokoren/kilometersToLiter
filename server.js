@@ -63,44 +63,9 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function driveClientForRequest(req) {
-  const { drive } = driveLib.driveFor(req.session.tokens, (tokens) => {
-    req.session.tokens = tokens;
-  });
-  return drive;
-}
-
-function isAuthError(err) {
-  const status = err.response?.status || err.code;
-  return status === 401 || status === 400 || /invalid_grant|invalid_token|unauthorized/i.test(err.message || '');
-}
-
-function handleDriveError(req, res, err, fallbackMessage) {
-  if (isAuthError(err)) {
-    console.warn('Google session expired or revoked:', err.message);
-    req.session = null;
-    return res.status(401).json({ error: 'Your Google session expired. Please sign in again.' });
-  }
-  console.error(fallbackMessage, err.message);
-  res.status(502).json({ error: fallbackMessage });
-}
-
 function handleDbError(req, res, err, fallbackMessage) {
   console.error(fallbackMessage, err.message);
   res.status(502).json({ error: fallbackMessage });
-}
-
-async function ensureMigrated(req, res, next) {
-  try {
-    if (await db.isMigrated(req.session.email)) return next();
-    const drive = driveClientForRequest(req);
-    const fileId = await driveLib.findExistingFile(drive);
-    if (fileId) req.session.driveFileId = fileId;
-    await db.migrateFromDriveIfEmpty(req.session.email, drive, fileId);
-    next();
-  } catch (err) {
-    handleDriveError(req, res, err, 'Could not check Google Drive for existing entries.');
-  }
 }
 
 app.get('/auth/google', (req, res) => {
@@ -129,7 +94,6 @@ app.get('/auth/google/callback', async (req, res) => {
 
     req.session.tokens = tokens;
     req.session.email = email;
-    delete req.session.driveFileId;
 
     res.redirect('/');
   } catch (err) {
@@ -153,7 +117,7 @@ app.get('/api/session', (req, res) => {
   res.json({ authenticated, email: authenticated ? req.session.email : null, environment });
 });
 
-app.get('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
+app.get('/api/entries', requireAuth, async (req, res) => {
   try {
     const entries = await db.getEntries(req.session.email);
     res.json({ entries, average: computeAverage(entries), email: req.session.email });
@@ -162,7 +126,7 @@ app.get('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
   }
 });
 
-app.post('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
+app.post('/api/entries', requireAuth, async (req, res) => {
   const startKm = Number(req.body.startKm);
   const endKm = Number(req.body.endKm);
   const liters = Number(req.body.liters);
@@ -195,7 +159,7 @@ app.post('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
   }
 });
 
-app.delete('/api/entries/:index', requireAuth, ensureMigrated, async (req, res) => {
+app.delete('/api/entries/:index', requireAuth, async (req, res) => {
   const index = Number(req.params.index);
   if (!Number.isInteger(index) || index < 0) {
     return res.status(400).json({ error: 'Invalid entry index.' });

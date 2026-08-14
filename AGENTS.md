@@ -13,8 +13,8 @@ Scripts
 
 Key files
 - [server.js](server.js) — Express server and API routes.
-- [lib/drive.js](lib/drive.js) — Google OAuth (sign-in) and the one-time Drive read used to migrate legacy data.
-- [lib/db.js](lib/db.js) — Postgres connection, schema, entry storage, and the lazy Drive→Postgres migration.
+- [lib/drive.js](lib/drive.js) — Google OAuth (sign-in), used only for identity (email).
+- [lib/db.js](lib/db.js) — Postgres connection, schema, and entry storage.
 - [public/index.html](public/index.html) — frontend app shell.
 - [public/app.js](public/app.js) — frontend logic.
 - [SETUP.md](SETUP.md) — Google OAuth setup and deployment notes.
@@ -24,8 +24,7 @@ Key files
 
 Project conventions & notes
 - Storage: fuel entries are stored in a shared Postgres database (Neon), keyed by the signed-in user's email (see `lib/db.js`, `SETUP.md`).
-- Auth: Google Sign-In is used only for identity/session, via a single OAuth client configured via env vars; `.env` is gitignored.
-- Migration: users who previously stored entries in their Google Drive `db.json` are migrated automatically and transparently on their first request after this change — see `ensureMigrated` in `server.js` and `migrateFromDriveIfEmpty` in `lib/db.js`. No manual migration step is needed.
+- Auth: Google Sign-In is used only for identity/session (requests only the `userinfo.email` scope, no Drive access), via a single OAuth client configured via env vars; `.env` is gitignored.
 - Security: never commit `GOOGLE_CLIENT_SECRET`, `DATABASE_URL`, or `.env`.
 
 How agents should operate

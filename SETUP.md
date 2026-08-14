@@ -1,12 +1,10 @@
 # Google sign-in + Postgres setup
 
-Every visitor signs in with their own Google account for identity, but fuel
-entries are stored server-side in a shared Postgres database (hosted on
-[Neon](https://neon.tech)), keyed by each user's email. If a user previously
-used this app when entries were stored in their Google Drive
-(`momoTools/KilometerstoLiter/db.json`), that data is migrated into Postgres
-automatically and transparently the first time they sign in after this
-change — no manual steps needed, and no old data is lost.
+Every visitor signs in with their own Google account for identity only
+(email address). Fuel entries are stored server-side in a shared Postgres
+database (hosted on [Neon](https://neon.tech)), keyed by each user's email.
+The app has no dependency on Google Drive — it only ever requests the
+`userinfo.email` scope, nothing else.
 
 You only need to do the Google OAuth setup once, no matter how many people
 will use the app — it configures the *app itself* (one Google Cloud OAuth
@@ -15,9 +13,7 @@ is also a one-time, app-wide step.
 
 ## 1. Create a Google Cloud project
 
-1. Go to https://console.cloud.google.com/projectcreate and create a project.
-2. Go to **APIs & Services > Library**, search **Google Drive API**, click
-   **Enable**.
+Go to https://console.cloud.google.com/projectcreate and create a project.
 
 ## 2. Configure the OAuth consent screen
 
@@ -74,11 +70,6 @@ in — entries you add are saved to Postgres, associated with your account.
    Render's persistent process too.
 3. Set it as `DATABASE_URL` in your `.env` (see step 4). The app creates its
    own tables automatically on first use — no manual schema setup needed.
-4. If you previously used this app with Drive-based storage, nothing else
-   is required: the first time each user signs in after this change, their
-   existing entries are read from their Drive `db.json` and copied into
-   Postgres automatically. This happens once per user and is safe to run
-   concurrently.
 
 ## 6. Deploy to Render
 
@@ -122,10 +113,9 @@ account to get their own independent, private fuel log.
 
 ## Notes on the security model
 
-- The app only requests the `drive.file` scope — it can only see files it
-  creates itself, never the rest of your Drive. This scope is now only used
-  for the one-time migration read described above; ongoing storage doesn't
-  touch Drive at all.
+- The app only requests the `userinfo.email` scope — it can read your email
+  address and nothing else from your Google account. It never requests
+  Google Drive access.
 - Your Google access/refresh tokens are stored in a signed, httpOnly cookie
   in your own browser, not in any server-side store — the server never
   persists a token. Fuel entries themselves, however, *are* now stored
