@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const cookieSession = require('cookie-session');
 const driveLib = require('./lib/drive');
+const db = require('./lib/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,6 +85,24 @@ function handleDriveError(req, res, err, fallbackMessage) {
   res.status(502).json({ error: fallbackMessage });
 }
 
+function handleDbError(req, res, err, fallbackMessage) {
+  console.error(fallbackMessage, err.message);
+  res.status(502).json({ error: fallbackMessage });
+}
+
+async function ensureMigrated(req, res, next) {
+  try {
+    if (await db.isMigrated(req.session.email)) return next();
+    const drive = driveClientForRequest(req);
+    const fileId = await driveLib.findExistingFile(drive);
+    if (fileId) req.session.driveFileId = fileId;
+    await db.migrateFromDriveIfEmpty(req.session.email, drive, fileId);
+    next();
+  } catch (err) {
+    handleDriveError(req, res, err, 'Could not check Google Drive for existing entries.');
+  }
+}
+
 app.get('/auth/google', (req, res) => {
   if (!driveLib.isEnvConfigured()) {
     return res.status(500).send('Google OAuth is not configured on the server (missing env vars).');
@@ -134,19 +153,16 @@ app.get('/api/session', (req, res) => {
   res.json({ authenticated, email: authenticated ? req.session.email : null, environment });
 });
 
-app.get('/api/entries', requireAuth, async (req, res) => {
+app.get('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
   try {
-    const drive = driveClientForRequest(req);
-    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
-    req.session.driveFileId = fileId;
-    const entries = await driveLib.downloadEntries(drive, fileId);
+    const entries = await db.getEntries(req.session.email);
     res.json({ entries, average: computeAverage(entries), email: req.session.email });
   } catch (err) {
-    handleDriveError(req, res, err, 'Could not load entries from Google Drive.');
+    handleDbError(req, res, err, 'Could not load entries from the database.');
   }
 });
 
-app.post('/api/entries', requireAuth, async (req, res) => {
+app.post('/api/entries', requireAuth, ensureMigrated, async (req, res) => {
   const startKm = Number(req.body.startKm);
   const endKm = Number(req.body.endKm);
   const liters = Number(req.body.liters);
@@ -172,41 +188,27 @@ app.post('/api/entries', requireAuth, async (req, res) => {
   };
 
   try {
-    const drive = driveClientForRequest(req);
-    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
-    req.session.driveFileId = fileId;
-
-    const entries = await driveLib.downloadEntries(drive, fileId);
-    entries.push(entry);
-    await driveLib.uploadEntries(drive, fileId, entries);
-
+    const entries = await db.addEntry(req.session.email, entry);
     res.status(201).json({ entries, average: computeAverage(entries) });
   } catch (err) {
-    handleDriveError(req, res, err, 'Could not save entry to Google Drive.');
+    handleDbError(req, res, err, 'Could not save entry to the database.');
   }
 });
 
-app.delete('/api/entries/:index', requireAuth, async (req, res) => {
+app.delete('/api/entries/:index', requireAuth, ensureMigrated, async (req, res) => {
   const index = Number(req.params.index);
   if (!Number.isInteger(index) || index < 0) {
     return res.status(400).json({ error: 'Invalid entry index.' });
   }
 
   try {
-    const drive = driveClientForRequest(req);
-    const fileId = await driveLib.ensureRemoteFile(drive, req.session.driveFileId);
-    req.session.driveFileId = fileId;
-
-    const entries = await driveLib.downloadEntries(drive, fileId);
-    if (index >= entries.length) {
+    const entries = await db.deleteEntryAtIndex(req.session.email, index);
+    if (entries === null) {
       return res.status(404).json({ error: 'Entry not found.' });
     }
-    entries.splice(index, 1);
-    await driveLib.uploadEntries(drive, fileId, entries);
-
     res.json({ entries, average: computeAverage(entries) });
   } catch (err) {
-    handleDriveError(req, res, err, 'Could not delete entry from Google Drive.');
+    handleDbError(req, res, err, 'Could not delete entry from the database.');
   }
 });
 
