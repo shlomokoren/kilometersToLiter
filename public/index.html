@@ -30,57 +30,148 @@
   </section>
 
   <div id="app-view" class="hidden">
-    <section class="card">
-      <h2>➕ Add entry</h2>
-      <form id="entry-form">
-        <div class="field-row">
-          <label>
-            Start KM
-            <input type="number" id="startKm" step="any" required>
-          </label>
-          <label>
-            End KM
-            <input type="number" id="endKm" step="any" required>
-          </label>
-          <label>
-            Total fuel (L)
-            <input type="number" id="liters" step="any" required>
-          </label>
+    <nav class="tabs">
+      <button type="button" class="tab-btn active" id="tab-btn-fuel" data-tab="fuel">⛽ Fuel Log</button>
+      <button type="button" class="tab-btn" id="tab-btn-cars" data-tab="cars">🚗 Cars</button>
+      <button type="button" class="tab-btn" id="tab-btn-issues" data-tab="issues">🐞 Report Issue</button>
+    </nav>
+
+    <div id="tab-fuel" class="tab-panel">
+      <section class="card">
+        <h2>➕ Add entry</h2>
+        <form id="entry-form">
+          <p id="no-cars-hint" class="empty hidden">
+            Add a car in the 🚗 Cars tab before logging a fuel entry.
+            <button type="button" id="go-to-cars-btn" class="text-btn">Go to Cars</button>
+          </p>
+          <div class="field-row">
+            <label>
+              Car
+              <select id="carId" required></select>
+            </label>
+            <label>
+              Start KM
+              <input type="number" id="startKm" step="any" required>
+            </label>
+            <label>
+              End KM
+              <input type="number" id="endKm" step="any" required>
+            </label>
+            <label>
+              Total fuel (L)
+              <input type="number" id="liters" step="any" required>
+            </label>
+          </div>
+          <button type="submit" id="entry-submit-btn">Calculate</button>
+          <button type="button" id="entry-cancel-btn" class="text-btn hidden">Cancel edit</button>
+          <p id="form-error" class="error"></p>
+        </form>
+        <div id="last-result" class="result hidden">
+          <h3>This entry</h3>
+          <div class="stat-grid"></div>
         </div>
-        <button type="submit">Calculate</button>
-        <p id="form-error" class="error"></p>
-      </form>
-      <div id="last-result" class="result hidden">
-        <h3>This entry</h3>
-        <div class="stat-grid"></div>
-      </div>
-    </section>
+      </section>
 
-    <section class="card">
-      <h2>📊 Average across all entries</h2>
-      <div id="average" class="stat-grid empty">No entries yet.</div>
-    </section>
+      <section class="card">
+        <h2>📊 Average per car</h2>
+        <div id="average"></div>
+      </section>
 
-    <section class="card">
-      <h2>📋 Entries</h2>
-      <table id="entries-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Start KM</th>
-            <th>End KM</th>
-            <th>Distance</th>
-            <th>Fuel (L)</th>
-            <th>km/L</th>
-            <th>L/100km</th>
-            <th>MPG (US)</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <p id="no-entries" class="empty hidden">No entries logged yet — add one above.</p>
-    </section>
+      <section class="card">
+        <h2>📋 Entries</h2>
+        <table id="entries-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Car</th>
+              <th>Start KM</th>
+              <th>End KM</th>
+              <th>Distance</th>
+              <th>Fuel (L)</th>
+              <th>km/L</th>
+              <th>L/100km</th>
+              <th>MPG (US)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="no-entries" class="empty hidden">No entries logged yet — add one above.</p>
+      </section>
+    </div>
+
+    <div id="tab-cars" class="tab-panel hidden">
+      <section class="card">
+        <h2>🚗 My Cars</h2>
+        <form id="car-form">
+          <div class="field-row">
+            <label>
+              Name
+              <input type="text" id="carName" placeholder="e.g. My Honda" required>
+            </label>
+            <label>
+              Make <span class="optional">(optional)</span>
+              <input type="text" id="carMake" list="make-list">
+              <datalist id="make-list"></datalist>
+            </label>
+            <label>
+              Model <span class="optional">(optional)</span>
+              <input type="text" id="carModel" list="model-list">
+              <datalist id="model-list"></datalist>
+            </label>
+            <label>
+              Year <span class="optional">(optional)</span>
+              <input type="number" id="carYear" step="1" min="1900" max="2100">
+            </label>
+          </div>
+          <button type="submit" id="car-submit-btn">Add car</button>
+          <button type="button" id="car-cancel-btn" class="text-btn hidden">Cancel edit</button>
+          <p id="car-form-error" class="error"></p>
+        </form>
+        <table id="cars-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Make</th>
+              <th>Model</th>
+              <th>Year</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="no-cars" class="empty hidden">No cars added yet — add one above.</p>
+      </section>
+    </div>
+
+    <div id="tab-issues" class="tab-panel hidden">
+      <section class="card">
+        <h2>🐞 Report an issue</h2>
+        <form id="issue-form">
+          <label>
+            Description
+            <textarea id="issueDescription" rows="4" placeholder="What went wrong?" required></textarea>
+          </label>
+          <button type="submit">Report issue</button>
+          <p id="issue-form-error" class="error"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2 id="issues-list-title">📋 Your reported issues</h2>
+        <table id="issues-table">
+          <thead>
+            <tr id="issues-table-head">
+              <th>Date</th>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="no-issues" class="empty hidden">No issues reported yet.</p>
+      </section>
+    </div>
   </div>
 </div>
 

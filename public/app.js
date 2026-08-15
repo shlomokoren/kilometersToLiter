@@ -4,6 +4,36 @@ const lastResult = document.getElementById('last-result');
 const averageEl = document.getElementById('average');
 const tbody = document.querySelector('#entries-table tbody');
 const noEntriesEl = document.getElementById('no-entries');
+const carSelect = document.getElementById('carId');
+const entrySubmitBtn = document.getElementById('entry-submit-btn');
+const noCarsHint = document.getElementById('no-cars-hint');
+const carForm = document.getElementById('car-form');
+const carFormError = document.getElementById('car-form-error');
+const carNameInput = document.getElementById('carName');
+const carMakeInput = document.getElementById('carMake');
+const carModelInput = document.getElementById('carModel');
+const carYearInput = document.getElementById('carYear');
+const carSubmitBtn = document.getElementById('car-submit-btn');
+const carCancelBtn = document.getElementById('car-cancel-btn');
+const makeList = document.getElementById('make-list');
+const modelList = document.getElementById('model-list');
+const carsTbody = document.querySelector('#cars-table tbody');
+const noCarsEl = document.getElementById('no-cars');
+const goToCarsBtn = document.getElementById('go-to-cars-btn');
+const entryCancelBtn = document.getElementById('entry-cancel-btn');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanels = {
+  fuel: document.getElementById('tab-fuel'),
+  cars: document.getElementById('tab-cars'),
+  issues: document.getElementById('tab-issues'),
+};
+const issueForm = document.getElementById('issue-form');
+const issueDescriptionInput = document.getElementById('issueDescription');
+const issueFormError = document.getElementById('issue-form-error');
+const issuesTbody = document.querySelector('#issues-table tbody');
+const issuesTableHead = document.getElementById('issues-table-head');
+const issuesListTitle = document.getElementById('issues-list-title');
+const noIssuesEl = document.getElementById('no-issues');
 const userBar = document.getElementById('user-bar');
 const userEmailEl = document.getElementById('user-email');
 const logoutBtn = document.getElementById('logout-btn');
@@ -15,6 +45,305 @@ const aboutBtn = document.getElementById('about-btn');
 const aboutModal = document.getElementById('about-modal');
 const aboutVersion = document.getElementById('about-version');
 const aboutCloseBtn = document.getElementById('about-close-btn');
+
+let cars = [];
+let editingCarId = null;
+let editingEntryId = null;
+let issues = [];
+let isDeveloperUser = false;
+
+const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix'];
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function statusLabel(status) {
+  return status.replace(/_/g, ' ');
+}
+
+function renderIssues() {
+  issuesListTitle.textContent = isDeveloperUser ? '📋 All reported issues' : '📋 Your reported issues';
+  issuesTableHead.innerHTML = isDeveloperUser
+    ? '<th>Date</th><th>Reporter</th><th>Status</th><th>Description</th><th></th>'
+    : '<th>Date</th><th>Status</th><th>Description</th>';
+
+  issuesTbody.innerHTML = '';
+  noIssuesEl.classList.toggle('hidden', issues.length > 0);
+
+  issues.forEach((issue) => {
+    const tr = document.createElement('tr');
+    const dateStr = new Date(issue.date).toLocaleString();
+    const description = escapeHtml(issue.description);
+
+    if (isDeveloperUser) {
+      const statusOptions = ISSUE_STATUSES.map(
+        (s) => `<option value="${s}" ${s === issue.status ? 'selected' : ''}>${statusLabel(s)}</option>`
+      ).join('');
+      tr.innerHTML = `
+        <td>${dateStr}</td>
+        <td>${escapeHtml(issue.email)}</td>
+        <td><select class="issue-status-select" data-id="${issue.id}">${statusOptions}</select></td>
+        <td>${description}</td>
+        <td><button type="button" class="delete-btn" data-id="${issue.id}" aria-label="Delete issue">✕</button></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td>${dateStr}</td>
+        <td>${statusLabel(issue.status)}</td>
+        <td>${description}</td>
+      `;
+    }
+    issuesTbody.appendChild(tr);
+  });
+}
+
+async function loadIssues() {
+  const res = await fetch('/api/issues');
+  if (res.status === 401) return;
+  const data = await res.json();
+  issues = data.issues;
+  renderIssues();
+}
+
+issueForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  issueFormError.textContent = '';
+
+  const payload = { description: issueDescriptionInput.value.trim() };
+  const res = await fetch('/api/issues', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 401) return;
+
+  const data = await res.json();
+  if (!res.ok) {
+    issueFormError.textContent = data.error || 'Something went wrong.';
+    return;
+  }
+
+  issues = data.issues;
+  renderIssues();
+  issueForm.reset();
+});
+
+issuesTbody.addEventListener('change', async (event) => {
+  const select = event.target.closest('.issue-status-select');
+  if (!select) return;
+
+  const res = await fetch(`/api/issues/${select.dataset.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: select.value }),
+  });
+
+  if (res.status === 401) return;
+
+  const data = await res.json();
+  if (!res.ok) {
+    window.alert(data.error || 'Could not update issue.');
+    return;
+  }
+
+  issues = data.issues;
+  renderIssues();
+});
+
+issuesTbody.addEventListener('click', async (event) => {
+  const deleteBtn = event.target.closest('.delete-btn');
+  if (!deleteBtn) return;
+
+  if (!window.confirm('Delete this issue? This cannot be undone.')) return;
+
+  const res = await fetch(`/api/issues/${deleteBtn.dataset.id}`, { method: 'DELETE' });
+  if (res.status === 401) return;
+
+  const data = await res.json();
+  if (!res.ok) {
+    window.alert(data.error || 'Could not delete issue.');
+    return;
+  }
+
+  issues = data.issues;
+  renderIssues();
+});
+
+function resetEntryForm() {
+  editingEntryId = null;
+  form.reset();
+  entrySubmitBtn.textContent = 'Calculate';
+  entryCancelBtn.classList.add('hidden');
+  formError.textContent = '';
+}
+
+entryCancelBtn.addEventListener('click', resetEntryForm);
+
+function showTab(tab) {
+  Object.entries(tabPanels).forEach(([name, panel]) => {
+    panel.classList.toggle('hidden', name !== tab);
+  });
+  tabButtons.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+}
+
+tabButtons.forEach((btn) => {
+  btn.addEventListener('click', () => showTab(btn.dataset.tab));
+});
+
+goToCarsBtn.addEventListener('click', () => showTab('cars'));
+
+function carLabel(c) {
+  const details = [c.make, c.model].filter(Boolean).join(' ');
+  return details ? `${c.name} (${details})` : c.name;
+}
+
+function renderCarSelect() {
+  carSelect.innerHTML = cars
+    .map((c) => `<option value="${c.id}">${carLabel(c)}</option>`)
+    .join('');
+  const hasCars = cars.length > 0;
+  noCarsHint.classList.toggle('hidden', hasCars);
+  carSelect.disabled = !hasCars;
+  entrySubmitBtn.disabled = !hasCars;
+  ['startKm', 'endKm', 'liters'].forEach((id) => {
+    document.getElementById(id).disabled = !hasCars;
+  });
+}
+
+function renderCars() {
+  carsTbody.innerHTML = '';
+  noCarsEl.classList.toggle('hidden', cars.length > 0);
+  cars.forEach((c) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td>${c.make || '—'}</td>
+      <td>${c.model || '—'}</td>
+      <td>${c.year || '—'}</td>
+      <td>
+        <button type="button" class="edit-btn" data-id="${c.id}" aria-label="Edit car">✎</button>
+        <button type="button" class="delete-btn" data-id="${c.id}" aria-label="Delete car">✕</button>
+      </td>
+    `;
+    carsTbody.appendChild(tr);
+  });
+}
+
+async function loadCars() {
+  const res = await fetch('/api/cars');
+  if (res.status === 401) return;
+  const data = await res.json();
+  cars = data.cars;
+  renderCars();
+  renderCarSelect();
+}
+
+async function loadCarMakes() {
+  const res = await fetch('/api/car-makes');
+  if (res.status === 401) return;
+  const data = await res.json();
+  makeList.innerHTML = data.makes.map((m) => `<option value="${m}">`).join('');
+}
+
+async function loadCarModels(make) {
+  if (!make) {
+    modelList.innerHTML = '';
+    return;
+  }
+  const res = await fetch(`/api/car-models?make=${encodeURIComponent(make)}`);
+  if (res.status === 401 || !res.ok) return;
+  const data = await res.json();
+  modelList.innerHTML = data.models.map((m) => `<option value="${m}">`).join('');
+}
+
+function resetCarForm() {
+  editingCarId = null;
+  carForm.reset();
+  carSubmitBtn.textContent = 'Add car';
+  carCancelBtn.classList.add('hidden');
+  carFormError.textContent = '';
+}
+
+carMakeInput.addEventListener('change', () => loadCarModels(carMakeInput.value.trim()));
+
+carCancelBtn.addEventListener('click', resetCarForm);
+
+carsTbody.addEventListener('click', async (event) => {
+  const editBtn = event.target.closest('.edit-btn');
+  const deleteBtn = event.target.closest('.delete-btn');
+
+  if (editBtn) {
+    const car = cars.find((c) => String(c.id) === editBtn.dataset.id);
+    if (!car) return;
+    editingCarId = car.id;
+    carNameInput.value = car.name;
+    carMakeInput.value = car.make;
+    carModelInput.value = car.model;
+    carYearInput.value = car.year || '';
+    carSubmitBtn.textContent = 'Save car';
+    carCancelBtn.classList.remove('hidden');
+    loadCarModels(car.make);
+    return;
+  }
+
+  if (deleteBtn) {
+    if (!window.confirm('Delete this car? Fuel entries logged against it will keep their data but no longer show a car.')) return;
+    const id = deleteBtn.dataset.id;
+    const res = await fetch(`/api/cars/${id}`, { method: 'DELETE' });
+    if (res.status === 401) return;
+    const data = await res.json();
+    if (!res.ok) {
+      window.alert(data.error || 'Could not delete car.');
+      return;
+    }
+    if (editingCarId === Number(id)) resetCarForm();
+    cars = data.cars;
+    renderCars();
+    renderCarSelect();
+    loadEntries();
+  }
+});
+
+carForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  carFormError.textContent = '';
+
+  const payload = {
+    name: carNameInput.value.trim(),
+    make: carMakeInput.value.trim(),
+    model: carModelInput.value.trim(),
+    year: carYearInput.value || null,
+  };
+
+  const url = editingCarId ? `/api/cars/${editingCarId}` : '/api/cars';
+  const method = editingCarId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 401) return;
+
+  const data = await res.json();
+  if (!res.ok) {
+    carFormError.textContent = data.error || 'Something went wrong.';
+    return;
+  }
+
+  cars = data.cars;
+  renderCars();
+  renderCarSelect();
+  resetCarForm();
+  loadEntries();
+});
 
 function closeAbout() {
   aboutModal.classList.add('hidden');
@@ -64,23 +393,39 @@ function renderStats(container, conv) {
     statBlock('MPG (US)', conv.mpgUs);
 }
 
-function renderAverage(average) {
-  if (!average) {
-    averageEl.className = 'stat-grid empty';
-    averageEl.innerHTML = 'No entries yet.';
+function renderCarAverages(carAverages) {
+  if (!carAverages || carAverages.length === 0) {
+    averageEl.innerHTML = '<p class="empty">Add a car to see its average.</p>';
     return;
   }
-  averageEl.className = 'stat-grid';
-  renderStats(averageEl, average);
+
+  averageEl.innerHTML = carAverages
+    .map((ca) => {
+      const body = ca.average
+        ? `<div class="stat-grid"></div>`
+        : `<p class="empty">No entries yet.</p>`;
+      return `<div class="car-average"><h3>${ca.carName}</h3>${body}</div>`;
+    })
+    .join('');
+
+  carAverages.forEach((ca, i) => {
+    if (!ca.average) return;
+    const grid = averageEl.children[i].querySelector('.stat-grid');
+    renderStats(grid, ca.average);
+  });
 }
 
+let lastLoadedEntries = [];
+
 function renderEntries(entries) {
+  lastLoadedEntries = entries;
   tbody.innerHTML = '';
   noEntriesEl.classList.toggle('hidden', entries.length > 0);
   entries.forEach((e, index) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${e.date}</td>
+      <td>${e.carName || '—'}</td>
       <td>${e.startKm}</td>
       <td>${e.endKm}</td>
       <td>${e.distance}</td>
@@ -88,7 +433,10 @@ function renderEntries(entries) {
       <td>${e.kmPerL}</td>
       <td>${e.lPer100km}</td>
       <td>${e.mpgUs}</td>
-      <td><button type="button" class="delete-btn" data-index="${index}" aria-label="Delete entry">✕</button></td>
+      <td>
+        <button type="button" class="edit-btn" data-id="${e.id}" aria-label="Edit entry">✎</button>
+        <button type="button" class="delete-btn" data-index="${index}" aria-label="Delete entry">✕</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -109,7 +457,7 @@ async function loadEntries() {
   }
   const data = await res.json();
   renderEntries(data.entries);
-  renderAverage(data.average);
+  renderCarAverages(data.carAverages);
   prefillStartKm(data.entries);
 }
 
@@ -137,7 +485,11 @@ async function init() {
     return;
   }
   showLoggedIn(data.email);
+  isDeveloperUser = Boolean(data.isDeveloper);
+  loadCarMakes();
+  await loadCars();
   loadEntries();
+  loadIssues();
 }
 
 logoutBtn.addEventListener('click', async () => {
@@ -146,12 +498,30 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 tbody.addEventListener('click', async (event) => {
-  const btn = event.target.closest('.delete-btn');
-  if (!btn) return;
+  const editBtn = event.target.closest('.edit-btn');
+  const deleteBtn = event.target.closest('.delete-btn');
+
+  if (editBtn) {
+    const entry = lastLoadedEntries.find((en) => String(en.id) === editBtn.dataset.id);
+    if (!entry) return;
+
+    editingEntryId = entry.id;
+    carSelect.value = entry.carId || '';
+    document.getElementById('startKm').value = entry.startKm;
+    document.getElementById('endKm').value = entry.endKm;
+    document.getElementById('liters').value = entry.liters;
+    entrySubmitBtn.textContent = 'Save entry';
+    entryCancelBtn.classList.remove('hidden');
+    formError.textContent = '';
+    return;
+  }
+
+  if (!deleteBtn) return;
 
   if (!window.confirm('Delete this entry? This cannot be undone.')) return;
 
-  const index = btn.dataset.index;
+  const index = deleteBtn.dataset.index;
+  const deletedEntry = lastLoadedEntries[index];
   const res = await fetch(`/api/entries/${index}`, { method: 'DELETE' });
 
   if (res.status === 401) {
@@ -166,8 +536,9 @@ tbody.addEventListener('click', async (event) => {
     return;
   }
 
+  if (deletedEntry && String(deletedEntry.id) === String(editingEntryId)) resetEntryForm();
   renderEntries(data.entries);
-  renderAverage(data.average);
+  renderCarAverages(data.carAverages);
 });
 
 form.addEventListener('submit', async (event) => {
@@ -175,13 +546,17 @@ form.addEventListener('submit', async (event) => {
   formError.textContent = '';
 
   const payload = {
+    carId: carSelect.value,
     startKm: document.getElementById('startKm').value,
     endKm: document.getElementById('endKm').value,
     liters: document.getElementById('liters').value,
   };
 
-  const res = await fetch('/api/entries', {
-    method: 'POST',
+  const url = editingEntryId ? `/api/entries/${editingEntryId}` : '/api/entries';
+  const method = editingEntryId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
@@ -199,13 +574,17 @@ form.addEventListener('submit', async (event) => {
     return;
   }
 
-  const newEntry = data.entries[data.entries.length - 1];
-  lastResult.classList.remove('hidden');
-  renderStats(lastResult.querySelector('.stat-grid'), newEntry);
+  const newEntry = editingEntryId
+    ? data.entries.find((en) => String(en.id) === String(editingEntryId))
+    : data.entries[data.entries.length - 1];
+  if (newEntry) {
+    lastResult.classList.remove('hidden');
+    renderStats(lastResult.querySelector('.stat-grid'), newEntry);
+  }
 
   renderEntries(data.entries);
-  renderAverage(data.average);
-  form.reset();
+  renderCarAverages(data.carAverages);
+  resetEntryForm();
 });
 
 init();
