@@ -1,4 +1,4 @@
-# Google sign-in + Postgres setup
+# Google sign-in + Postgres setup .
 
 
 Every visitor signs in with their own Google account for identity only
