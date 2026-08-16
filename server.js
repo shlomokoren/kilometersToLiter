@@ -384,10 +384,15 @@ app.get('/api/entries', requireAuth, async (req, res) => {
   }
 });
 
+function toNumber(value) {
+  if (typeof value === 'string') return Number(value.replace(/,/g, ''));
+  return Number(value);
+}
+
 function validateEntryFields(body) {
-  const startKm = Number(body.startKm);
-  const endKm = Number(body.endKm);
-  const liters = Number(body.liters);
+  const startKm = toNumber(body.startKm);
+  const endKm = toNumber(body.endKm);
+  const liters = toNumber(body.liters);
   const carId = Number(body.carId);
 
   if (!Number.isFinite(startKm) || !Number.isFinite(endKm) || !Number.isFinite(liters)) {

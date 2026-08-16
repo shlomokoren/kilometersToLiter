@@ -57,6 +57,26 @@ let isDeveloperUser = false;
 const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix', 'closed'];
 let editingIssueId = null;
 
+function parseKm(value) {
+  if (typeof value !== 'string') return Number(value);
+  return Number(value.replace(/,/g, ''));
+}
+
+function formatKm(value) {
+  const num = parseKm(value);
+  if (!Number.isFinite(num)) return value;
+  const [intPart, decPart] = String(num).split('.');
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return decPart ? `${withCommas}.${decPart}` : withCommas;
+}
+
+['startKm', 'endKm'].forEach((id) => {
+  document.getElementById(id).addEventListener('blur', (event) => {
+    if (!event.target.value) return;
+    event.target.value = formatKm(event.target.value);
+  });
+});
+
 function resetIssueForm() {
   editingIssueId = null;
   issueForm.reset();
@@ -483,8 +503,8 @@ function renderEntries(entries) {
     tr.innerHTML = `
       <td>${e.date}</td>
       <td>${e.carName || '—'}</td>
-      <td>${e.startKm}</td>
-      <td>${e.endKm}</td>
+      <td>${formatKm(e.startKm)}</td>
+      <td>${formatKm(e.endKm)}</td>
       <td>${e.distance}</td>
       <td>${e.liters}</td>
       <td>${e.kmPerL}</td>
@@ -502,7 +522,7 @@ function renderEntries(entries) {
 function prefillStartKm(entries) {
   const startKmInput = document.getElementById('startKm');
   if (startKmInput.value || !entries || entries.length === 0) return;
-  startKmInput.value = entries[entries.length - 1].endKm;
+  startKmInput.value = formatKm(entries[entries.length - 1].endKm);
 }
 
 async function loadEntries() {
@@ -564,8 +584,8 @@ tbody.addEventListener('click', async (event) => {
 
     editingEntryId = entry.id;
     carSelect.value = entry.carId || '';
-    document.getElementById('startKm').value = entry.startKm;
-    document.getElementById('endKm').value = entry.endKm;
+    document.getElementById('startKm').value = formatKm(entry.startKm);
+    document.getElementById('endKm').value = formatKm(entry.endKm);
     document.getElementById('liters').value = entry.liters;
     entrySubmitBtn.textContent = 'Save entry';
     entryCancelBtn.classList.remove('hidden');
@@ -604,8 +624,8 @@ form.addEventListener('submit', async (event) => {
 
   const payload = {
     carId: carSelect.value,
-    startKm: document.getElementById('startKm').value,
-    endKm: document.getElementById('endKm').value,
+    startKm: parseKm(document.getElementById('startKm').value),
+    endKm: parseKm(document.getElementById('endKm').value),
     liters: document.getElementById('liters').value,
   };
 
