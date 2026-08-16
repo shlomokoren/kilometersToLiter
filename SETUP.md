@@ -1,5 +1,6 @@
 # Google sign-in + Postgres setup
 
+
 Every visitor signs in with their own Google account for identity only
 (email address). Fuel entries are stored server-side in a shared Postgres
 database (hosted on [Neon](https://neon.tech)), keyed by each user's email.
