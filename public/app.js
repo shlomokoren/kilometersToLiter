@@ -267,6 +267,7 @@ function showTab(tab) {
   tabButtons.forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  localStorage.setItem('activeTab', tab);
 }
 
 tabButtons.forEach((btn) => {
@@ -563,6 +564,8 @@ async function init() {
   }
   showLoggedIn(data.email);
   isDeveloperUser = Boolean(data.isDeveloper);
+  const savedTab = localStorage.getItem('activeTab');
+  if (savedTab && tabPanels[savedTab]) showTab(savedTab);
   loadCarMakes();
   await loadCars();
   loadEntries();
