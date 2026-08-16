@@ -30,6 +30,8 @@ const tabPanels = {
 const issueForm = document.getElementById('issue-form');
 const issueDescriptionInput = document.getElementById('issueDescription');
 const issueFormError = document.getElementById('issue-form-error');
+const issueSubmitBtn = document.getElementById('issue-submit-btn');
+const issueCancelBtn = document.getElementById('issue-cancel-btn');
 const issuesTbody = document.querySelector('#issues-table tbody');
 const issuesTableHead = document.getElementById('issues-table-head');
 const issuesListTitle = document.getElementById('issues-list-title');
@@ -52,7 +54,18 @@ let editingEntryId = null;
 let issues = [];
 let isDeveloperUser = false;
 
-const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix'];
+const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix', 'closed'];
+let editingIssueId = null;
+
+function resetIssueForm() {
+  editingIssueId = null;
+  issueForm.reset();
+  issueSubmitBtn.textContent = 'Report issue';
+  issueCancelBtn.classList.add('hidden');
+  issueFormError.textContent = '';
+}
+
+issueCancelBtn.addEventListener('click', resetIssueForm);
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (ch) => ({
@@ -68,7 +81,7 @@ function renderIssues() {
   issuesListTitle.textContent = isDeveloperUser ? '📋 All reported issues' : '📋 Your reported issues';
   issuesTableHead.innerHTML = isDeveloperUser
     ? '<th>Date</th><th>Reporter</th><th>Status</th><th>Description</th><th></th>'
-    : '<th>Date</th><th>Status</th><th>Description</th>';
+    : '<th>Date</th><th>Status</th><th>Description</th><th></th>';
 
   issuesTbody.innerHTML = '';
   noIssuesEl.classList.toggle('hidden', issues.length > 0);
@@ -77,6 +90,7 @@ function renderIssues() {
     const tr = document.createElement('tr');
     const dateStr = new Date(issue.date).toLocaleString();
     const description = escapeHtml(issue.description);
+    const editBtn = `<button type="button" class="edit-btn" data-id="${issue.id}" aria-label="Edit issue">✎</button>`;
 
     if (isDeveloperUser) {
       const statusOptions = ISSUE_STATUSES.map(
@@ -87,13 +101,20 @@ function renderIssues() {
         <td>${escapeHtml(issue.email)}</td>
         <td><select class="issue-status-select" data-id="${issue.id}">${statusOptions}</select></td>
         <td>${description}</td>
-        <td><button type="button" class="delete-btn" data-id="${issue.id}" aria-label="Delete issue">✕</button></td>
+        <td>
+          ${editBtn}
+          <button type="button" class="delete-btn" data-id="${issue.id}" aria-label="Delete issue">✕</button>
+        </td>
       `;
     } else {
+      const closeBtn = issue.status !== 'closed'
+        ? `<button type="button" class="close-issue-btn" data-id="${issue.id}">Close</button>`
+        : '';
       tr.innerHTML = `
         <td>${dateStr}</td>
         <td>${statusLabel(issue.status)}</td>
         <td>${description}</td>
+        <td>${editBtn} ${closeBtn}</td>
       `;
     }
     issuesTbody.appendChild(tr);
@@ -113,8 +134,11 @@ issueForm.addEventListener('submit', async (event) => {
   issueFormError.textContent = '';
 
   const payload = { description: issueDescriptionInput.value.trim() };
-  const res = await fetch('/api/issues', {
-    method: 'POST',
+  const url = editingIssueId ? `/api/issues/${editingIssueId}` : '/api/issues';
+  const method = editingIssueId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
@@ -129,7 +153,7 @@ issueForm.addEventListener('submit', async (event) => {
 
   issues = data.issues;
   renderIssues();
-  issueForm.reset();
+  resetIssueForm();
 });
 
 issuesTbody.addEventListener('change', async (event) => {
@@ -155,7 +179,40 @@ issuesTbody.addEventListener('change', async (event) => {
 });
 
 issuesTbody.addEventListener('click', async (event) => {
+  const editBtn = event.target.closest('.edit-btn');
+  const closeBtn = event.target.closest('.close-issue-btn');
   const deleteBtn = event.target.closest('.delete-btn');
+
+  if (editBtn) {
+    const issue = issues.find((i) => String(i.id) === editBtn.dataset.id);
+    if (!issue) return;
+    editingIssueId = issue.id;
+    issueDescriptionInput.value = issue.description;
+    issueSubmitBtn.textContent = 'Save issue';
+    issueCancelBtn.classList.remove('hidden');
+    issueFormError.textContent = '';
+    return;
+  }
+
+  if (closeBtn) {
+    const res = await fetch(`/api/issues/${closeBtn.dataset.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'closed' }),
+    });
+    if (res.status === 401) return;
+
+    const data = await res.json();
+    if (!res.ok) {
+      window.alert(data.error || 'Could not close issue.');
+      return;
+    }
+
+    issues = data.issues;
+    renderIssues();
+    return;
+  }
+
   if (!deleteBtn) return;
 
   if (!window.confirm('Delete this issue? This cannot be undone.')) return;

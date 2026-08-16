@@ -101,7 +101,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix'];
+const ISSUE_STATUSES = ['new', 'in_progress', 'resolved', 'wont_fix', 'closed'];
 
 function isDeveloper(email) {
   return Boolean(process.env.DEVELOPERS_EMAIL) && email === process.env.DEVELOPERS_EMAIL;
@@ -303,20 +303,53 @@ app.post('/api/issues', requireAuth, async (req, res) => {
   }
 });
 
-app.put('/api/issues/:id', requireAuth, requireDeveloper, async (req, res) => {
+app.put('/api/issues/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id < 0) {
     return res.status(400).json({ error: 'Invalid issue id.' });
   }
-  const status = String(req.body.status || '');
-  if (!ISSUE_STATUSES.includes(status)) {
-    return res.status(400).json({ error: `Status must be one of: ${ISSUE_STATUSES.join(', ')}.` });
-  }
 
   try {
-    const updated = await db.updateIssueStatus(id, status);
+    const issue = await db.getIssueById(id);
+    if (!issue) return res.status(404).json({ error: 'Issue not found.' });
+
+    const email = req.session.email;
+    const developer = isDeveloper(email);
+    const isOwner = issue.email === email;
+    if (!developer && !isOwner) {
+      return res.status(403).json({ error: 'You can only edit your own issues.' });
+    }
+
+    const updates = {};
+
+    if (req.body.description !== undefined) {
+      const description = String(req.body.description || '').trim();
+      if (!description) return res.status(400).json({ error: 'Description is required.' });
+      updates.description = description;
+    }
+
+    if (req.body.status !== undefined) {
+      const status = String(req.body.status);
+      if (!ISSUE_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `Status must be one of: ${ISSUE_STATUSES.join(', ')}.` });
+      }
+      if (developer) {
+        updates.status = status;
+      } else if (status !== 'closed') {
+        return res.status(403).json({ error: 'You can only close your own issue.' });
+      } else {
+        updates.status = status;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update.' });
+    }
+
+    const updated = await db.updateIssue(id, updates);
     if (!updated) return res.status(404).json({ error: 'Issue not found.' });
-    const issues = await db.getAllIssues();
+
+    const issues = developer ? await db.getAllIssues() : await db.getIssuesForUser(email);
     res.json({ issues });
   } catch (err) {
     handleDbError(req, res, err, 'Could not update issue in the database.');

@@ -347,6 +347,25 @@ tbody tr:hover {
   filter: none;
 }
 
+.close-issue-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  box-shadow: none;
+  line-height: 1;
+}
+
+.close-issue-btn:hover {
+  background: var(--accent-3);
+  color: #fff;
+  border-color: var(--accent-3);
+  filter: none;
+}
+
 @media (max-width: 600px) {
   table { display: block; overflow-x: auto; }
 }
