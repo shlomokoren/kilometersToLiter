@@ -21,7 +21,21 @@ function resolveCommit() {
   }
 }
 
+function resolveBranch() {
+  if (process.env.RENDER_GIT_BRANCH) return process.env.RENDER_GIT_BRANCH;
+  if (process.env.VERCEL_GIT_COMMIT_REF) return process.env.VERCEL_GIT_COMMIT_REF;
+  try {
+    return require('child_process')
+      .execSync('git rev-parse --abbrev-ref HEAD', { cwd: __dirname })
+      .toString()
+      .trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 const COMMIT = resolveCommit();
+const BRANCH = resolveBranch();
 const DEPLOYED_AT = new Date().toISOString();
 
 app.set('trust proxy', 1);
@@ -150,7 +164,7 @@ app.get('/api/version', (req, res) => {
 
 app.get('/api/session', (req, res) => {
   const authenticated = Boolean(req.session && req.session.tokens);
-  const environment = process.env.NODE_ENV === 'production' ? 'production' : 'test';
+  const environment = BRANCH === 'main' ? 'production' : 'test';
   res.json({
     authenticated,
     email: authenticated ? req.session.email : null,
