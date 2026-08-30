@@ -126,3 +126,4 @@ account to get their own independent, private fuel log.
   application" OAuth client secret runs server-side and should be kept
   confidential — it's passed as an environment variable (never committed)
   both locally (`.env`, gitignored) and on Render (dashboard env var).
+  ..
