@@ -77,6 +77,14 @@ function formatKm(value) {
   });
 });
 
+const PENDING_START_KM_KEY = 'pendingStartKm';
+
+document.getElementById('startKm').addEventListener('input', (event) => {
+  const raw = event.target.value.trim();
+  if (raw) localStorage.setItem(PENDING_START_KM_KEY, raw);
+  else localStorage.removeItem(PENDING_START_KM_KEY);
+});
+
 function resetIssueForm() {
   editingIssueId = null;
   issueForm.reset();
@@ -522,7 +530,13 @@ function renderEntries(entries) {
 
 function prefillStartKm(entries) {
   const startKmInput = document.getElementById('startKm');
-  if (startKmInput.value || !entries || entries.length === 0) return;
+  if (startKmInput.value) return;
+  const pending = localStorage.getItem(PENDING_START_KM_KEY);
+  if (pending) {
+    startKmInput.value = formatKm(pending);
+    return;
+  }
+  if (!entries || entries.length === 0) return;
   startKmInput.value = formatKm(entries[entries.length - 1].endKm);
 }
 
@@ -662,6 +676,7 @@ form.addEventListener('submit', async (event) => {
     renderStats(lastResult.querySelector('.stat-grid'), newEntry);
   }
 
+  localStorage.removeItem(PENDING_START_KM_KEY);
   renderEntries(data.entries);
   renderCarAverages(data.carAverages);
   resetEntryForm();
