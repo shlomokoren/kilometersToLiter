@@ -297,7 +297,7 @@ function renderCarSelect() {
   noCarsHint.classList.toggle('hidden', hasCars);
   carSelect.disabled = !hasCars;
   entrySubmitBtn.disabled = !hasCars;
-  ['startKm', 'endKm', 'liters'].forEach((id) => {
+  ['startKm', 'endKm', 'liters', 'price'].forEach((id) => {
     document.getElementById(id).disabled = !hasCars;
   });
 }
@@ -498,6 +498,9 @@ function renderCarAverages(carAverages) {
     if (!ca.average) return;
     const grid = averageEl.children[i].querySelector('.stat-grid');
     renderStats(grid, ca.average);
+    if (ca.averagePrice != null) {
+      grid.insertAdjacentHTML('beforeend', statBlock('Avg price/L', ca.averagePrice));
+    }
   });
 }
 
@@ -516,6 +519,7 @@ function renderEntries(entries) {
       <td>${formatKm(e.endKm)}</td>
       <td>${e.distance}</td>
       <td>${e.liters}</td>
+      <td>${e.price != null ? e.price : '—'}</td>
       <td>${e.kmPerL}</td>
       <td>${e.lPer100km}</td>
       <td>${e.mpgUs}</td>
@@ -604,6 +608,7 @@ tbody.addEventListener('click', async (event) => {
     document.getElementById('startKm').value = formatKm(entry.startKm);
     document.getElementById('endKm').value = formatKm(entry.endKm);
     document.getElementById('liters').value = entry.liters;
+    document.getElementById('price').value = entry.price != null ? entry.price : '';
     entrySubmitBtn.textContent = 'Save entry';
     entryCancelBtn.classList.remove('hidden');
     formError.textContent = '';
@@ -644,6 +649,7 @@ form.addEventListener('submit', async (event) => {
     startKm: parseKm(document.getElementById('startKm').value),
     endKm: parseKm(document.getElementById('endKm').value),
     liters: document.getElementById('liters').value,
+    price: document.getElementById('price').value,
   };
 
   const url = editingEntryId ? `/api/entries/${editingEntryId}` : '/api/entries';
