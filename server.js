@@ -6,6 +6,7 @@ const cookieSession = require('cookie-session');
 const driveLib = require('./lib/drive');
 const db = require('./lib/db');
 const vehicleApi = require('./lib/vehicleApi');
+const XLSX = require('xlsx');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -399,6 +400,48 @@ app.get('/api/entries', requireAuth, async (req, res) => {
     res.json({ entries, carAverages: computeAveragesByCar(cars, entries), email: req.session.email });
   } catch (err) {
     handleDbError(req, res, err, 'Could not load entries from the database.');
+  }
+});
+
+function entriesToRows(entries) {
+  return entries.map((e) => ({
+    Date: e.date,
+    Car: e.carName || '',
+    'Start KM': e.startKm,
+    'End KM': e.endKm,
+    'Distance (km)': e.distance,
+    'Fuel (L)': e.liters,
+    Price: e.price != null ? e.price : '',
+    'km/L': e.kmPerL,
+    'L/100km': e.lPer100km,
+    'MPG (US)': e.mpgUs,
+  }));
+}
+
+app.get('/api/entries/export', requireAuth, async (req, res) => {
+  const format = String(req.query.format || 'csv').toLowerCase();
+  if (format !== 'csv' && format !== 'xlsx') {
+    return res.status(400).json({ error: 'format must be csv or xlsx.' });
+  }
+
+  try {
+    const entries = await db.getEntries(req.session.email);
+    const worksheet = XLSX.utils.json_to_sheet(entriesToRows(entries));
+    const filename = `fuel-entries-${new Date().toISOString().slice(0, 10)}.${format}`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.send(XLSX.utils.sheet_to_csv(worksheet));
+    } else {
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Entries');
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+    }
+  } catch (err) {
+    handleDbError(req, res, err, 'Could not export entries.');
   }
 });
 
