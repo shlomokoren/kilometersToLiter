@@ -72,6 +72,15 @@ function computeAverage(entries) {
   return conversions(totalDistance / totalLiters);
 }
 
+function computeAveragePrice(entries) {
+  const priced = entries.filter((e) => typeof e.price === 'number' && Number.isFinite(e.price));
+  if (priced.length === 0) return null;
+  const totalPrice = priced.reduce((sum, e) => sum + e.price, 0);
+  const totalLiters = priced.reduce((sum, e) => sum + e.liters, 0);
+  if (totalLiters <= 0) return null;
+  return round(totalPrice / totalLiters);
+}
+
 function computeAveragesByCar(cars, entries) {
   const byCarId = new Map();
   for (const e of entries) {
@@ -80,15 +89,24 @@ function computeAveragesByCar(cars, entries) {
     byCarId.get(key).push(e);
   }
 
-  const result = cars.map((c) => ({
-    carId: c.id,
-    carName: c.name,
-    average: computeAverage(byCarId.get(String(c.id)) || []),
-  }));
+  const result = cars.map((c) => {
+    const carEntries = byCarId.get(String(c.id)) || [];
+    return {
+      carId: c.id,
+      carName: c.name,
+      average: computeAverage(carEntries),
+      averagePrice: computeAveragePrice(carEntries),
+    };
+  });
 
   const unassigned = byCarId.get('none');
   if (unassigned && unassigned.length > 0) {
-    result.push({ carId: null, carName: 'No car', average: computeAverage(unassigned) });
+    result.push({
+      carId: null,
+      carName: 'No car',
+      average: computeAverage(unassigned),
+      averagePrice: computeAveragePrice(unassigned),
+    });
   }
 
   return result;
@@ -394,6 +412,10 @@ function validateEntryFields(body) {
   const endKm = toNumber(body.endKm);
   const liters = toNumber(body.liters);
   const carId = Number(body.carId);
+  const priceRaw = body.price;
+  const price = priceRaw === undefined || priceRaw === null || priceRaw === ''
+    ? null
+    : toNumber(priceRaw);
 
   if (!Number.isFinite(startKm) || !Number.isFinite(endKm) || !Number.isFinite(liters)) {
     return { error: 'startKm, endKm, and liters must be numbers.' };
@@ -407,9 +429,12 @@ function validateEntryFields(body) {
   if (!Number.isInteger(carId) || carId < 0) {
     return { error: 'Please select a car.' };
   }
+  if (price !== null && (!Number.isFinite(price) || price < 0)) {
+    return { error: 'Price must be a valid number.' };
+  }
 
   const distance = round(endKm - startKm);
-  return { fields: { startKm, endKm, liters, carId, distance, ...conversions(distance / liters) } };
+  return { fields: { startKm, endKm, liters, price, carId, distance, ...conversions(distance / liters) } };
 }
 
 app.post('/api/entries', requireAuth, async (req, res) => {

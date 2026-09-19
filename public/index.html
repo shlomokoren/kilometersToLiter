@@ -61,6 +61,10 @@
               Total fuel (L)
               <input type="number" id="liters" step="any" required>
             </label>
+            <label>
+              Price <span class="optional">(optional)</span>
+              <input type="number" id="price" step="any" min="0">
+            </label>
           </div>
           <button type="submit" id="entry-submit-btn">Calculate</button>
           <button type="button" id="entry-cancel-btn" class="text-btn hidden">Cancel edit</button>
@@ -88,6 +92,7 @@
               <th>End KM</th>
               <th>Distance</th>
               <th>Fuel (L)</th>
+              <th>Price</th>
               <th>km/L</th>
               <th>L/100km</th>
               <th>MPG (US)</th>
