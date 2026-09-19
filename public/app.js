@@ -4,6 +4,8 @@ const lastResult = document.getElementById('last-result');
 const averageEl = document.getElementById('average');
 const tbody = document.querySelector('#entries-table tbody');
 const noEntriesEl = document.getElementById('no-entries');
+const exportCsvBtn = document.getElementById('export-csv-btn');
+const exportXlsxBtn = document.getElementById('export-xlsx-btn');
 const carSelect = document.getElementById('carId');
 const entrySubmitBtn = document.getElementById('entry-submit-btn');
 const noCarsHint = document.getElementById('no-cars-hint');
@@ -543,6 +545,49 @@ function prefillStartKm(entries) {
   if (!entries || entries.length === 0) return;
   startKmInput.value = formatKm(entries[entries.length - 1].endKm);
 }
+
+const EXPORT_MIME = {
+  csv: 'text/csv',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+async function shareOrDownloadEntries(format) {
+  const res = await fetch(`/api/entries/export?format=${format}`);
+  if (res.status === 401) {
+    const data = await res.json().catch(() => ({}));
+    showLoggedOut(data.error);
+    return;
+  }
+  if (!res.ok) {
+    window.alert('Could not export entries.');
+    return;
+  }
+
+  const blob = await res.blob();
+  const filename = `fuel-entries-${new Date().toISOString().slice(0, 10)}.${format}`;
+  const file = new File([blob], filename, { type: EXPORT_MIME[format] });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Fuel entries' });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+exportCsvBtn.addEventListener('click', () => shareOrDownloadEntries('csv'));
+exportXlsxBtn.addEventListener('click', () => shareOrDownloadEntries('xlsx'));
 
 async function loadEntries() {
   const res = await fetch('/api/entries');
